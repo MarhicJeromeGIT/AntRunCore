@@ -18,6 +18,12 @@ public class InGameState extends GameState
 	}
 	
 	@Override
+	public void touchEvent( float x, float y, boolean pressed )
+	{
+		game.touchEvent(x, y, pressed);
+	}
+	
+	@Override
 	public void draw(SpriteBatch batch) 
 	{		
 		game.draw(batch);

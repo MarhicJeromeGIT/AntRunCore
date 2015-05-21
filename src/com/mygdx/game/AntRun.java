@@ -2,6 +2,7 @@ package com.mygdx.game;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Vector;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Music;
@@ -35,9 +36,9 @@ public class AntRun
 	float antAnimTime;
 	boolean died;
 	
-	int antWidth  = 10;
-	int antHeight = 15;
-	int antStartSpeed = 30;
+	int antWidth  = 35;
+	int antHeight = 35;
+	int antStartSpeed = 40;
 	boolean antReachedMiddle;
 	
 	Gauge gauge;
@@ -52,6 +53,25 @@ public class AntRun
 	
 	int points;
 	
+	public class PawData
+	{
+		public PawData(int _x, int _y, AntDirection dir, boolean left)
+		{
+			x = _x;
+			y = _y;
+			final float[] pawrot = { 180, 90,0,270};
+			angle = pawrot[ dir.ordinal() ];
+			angle += left ? -30 : +30;
+		}
+		public int x;
+		public int y;
+		public float angle;
+	}
+	Vector<PawData> footprints;
+	boolean leftPaw;
+	float nextFootprintTime;
+	Texture pawTex;
+	
 	public enum AntDirection
 	{
 		SOUTH, // 0
@@ -62,9 +82,6 @@ public class AntRun
 	
 	public enum TileType
 	{
-		FOREVER_BANNED,
-		VISITED,
-		START,
 		STRAIGHT_HORI,
 		STRAIGHT_VERT,
 		CROSS,
@@ -72,8 +89,20 @@ public class AntRun
 		TURN_NW,
 		TURN_SE,
 		TURN_SW,
+		// 
+		START,
+		STRAIGHT_HORI_BANNED,
+		STRAIGHT_VERT_BANNED,
+		CROSS_BANNED,
+		TURN_NE_BANNED,
+		TURN_NW_BANNED,
+		TURN_SE_BANNED,
+		TURN_SW_BANNED,
+		
 	}
 	Texture[] tex;
+	
+	Texture[] texBanned;
 	
     public BitmapFont font;
 
@@ -83,31 +112,39 @@ public class AntRun
 		visited = new boolean[SX][SY];
 				
 		tex = new Texture[TileType.values().length];
-		tex[TileType.FOREVER_BANNED.ordinal()] = new Texture("visited.png");
-		tex[TileType.VISITED.ordinal()] = new Texture("visited.png");
-		tex[TileType.START.ordinal()]   = new Texture("square_start.png");
-		tex[TileType.STRAIGHT_HORI.ordinal()]   = new Texture("square_hori.png");
-		tex[TileType.STRAIGHT_VERT.ordinal()]   = new Texture("square_vert.png");
-		tex[TileType.CROSS.ordinal()]   = new Texture("square_cross.png");
-		tex[TileType.TURN_NE.ordinal()] = new Texture("square_turn_NE.png");
-		tex[TileType.TURN_NW.ordinal()] = new Texture("square_turn_NW.png");
-		tex[TileType.TURN_SE.ordinal()] = new Texture("square_turn_SE.png");
-		tex[TileType.TURN_SW.ordinal()] = new Texture("square_turn_SW.png");
-
+		tex[TileType.STRAIGHT_HORI.ordinal()]   = new Texture("square_hori_2.png");
+		tex[TileType.STRAIGHT_VERT.ordinal()]   = new Texture("square_vert_2.png");
+		tex[TileType.CROSS.ordinal()]   = new Texture("square_cross_2.png");
+		tex[TileType.TURN_NE.ordinal()] = new Texture("square_turn_NE_2.png");
+		tex[TileType.TURN_NW.ordinal()] = new Texture("square_turn_NW_2.png");
+		tex[TileType.TURN_SE.ordinal()] = new Texture("square_turn_SE_2.png");
+		tex[TileType.TURN_SW.ordinal()] = new Texture("square_turn_SW_2.png");
+		tex[TileType.STRAIGHT_HORI_BANNED.ordinal()]   = new Texture("square_hori_banned.png");
+		tex[TileType.STRAIGHT_VERT_BANNED.ordinal()]   = new Texture("square_vert_banned.png");
+		tex[TileType.CROSS_BANNED.ordinal()]   = new Texture("square_cross_banned.png");
+		tex[TileType.TURN_NE_BANNED.ordinal()] = new Texture("square_NE_banned.png");
+		tex[TileType.TURN_NW_BANNED.ordinal()] = new Texture("square_NW_banned.png");
+		tex[TileType.TURN_SE_BANNED.ordinal()] = new Texture("square_SE_banned.png");
+		tex[TileType.TURN_SW_BANNED.ordinal()] = new Texture("square_SW_banned.png");
+		tex[TileType.START.ordinal()]   = new Texture("square_start_2.png");
+		
 		gauge = new Gauge();
 		
 		antTexture = new Texture[3];
-		antTexture[0] = new Texture("ant.png");
-		antTexture[1] = new Texture("ant_walk1.png");
-		antTexture[2] = new Texture("ant_walk2.png");
+		antTexture[0] = new Texture("newcat_1.png");
+		antTexture[1] = new Texture("newcat_1.png");
+		antTexture[2] = new Texture("newcat_2.png");		
 		antTextureIndex = 0;
 		antAnimTime = 0.400f;
 		antDirection = AntDirection.SOUTH;
 		
+		footprints = new Vector<PawData>();
+		pawTex = new Texture("paw.png");
+		
 		TxtFastButtonReleased = new Texture("fastReleased.png");
 		TxtFastButtonPressed = new Texture("fastPressed.png");
 		fastButtonPressed = false;
-		fastButtonZone = new Rectangle(650,400,70,50);
+		fastButtonZone = new Rectangle(635,400,130,71);
 
 		bgMusic = Gdx.audio.newMusic(Gdx.files.internal("bg1.mp3"));
 		// start the playback of the background music immediately
@@ -115,8 +152,9 @@ public class AntRun
 		bgMusic.play();
 		
         font = new BitmapFont();
-
-
+        font.getData().setScale(2.0f,2.0f);
+       
+        
 		restartGame();
 	}
 	
@@ -131,6 +169,8 @@ public class AntRun
 		gauge.addStep(1);
 		antTextureIndex = 1;
 		died = false;
+		nextFootprintTime = 0.0f;
+		leftPaw = true;
 	}
 	private void decideNewAntDirection()
 	{		
@@ -153,11 +193,11 @@ public class AntRun
 			{
 				possibleDir.add(AntDirection.NORTH);
 			}
-			if( antDirection != AntDirection.NORTH && !isPathBlocked( AntDirection.SOUTH, tileX, Math.abs((tileY-1)%SY) ))
+			if( antDirection != AntDirection.NORTH && !isPathBlocked( AntDirection.SOUTH, tileX, (SY+tileY-1)%SY ))
 			{
 				possibleDir.add(AntDirection.SOUTH);
 			}			
-			if( antDirection != AntDirection.EAST && !isPathBlocked( AntDirection.WEST, Math.abs((tileX-1)%SX), tileY ))
+			if( antDirection != AntDirection.EAST && !isPathBlocked( AntDirection.WEST, (SX+tileX-1)%SX, tileY ))
 			{
 				possibleDir.add(AntDirection.WEST);
 			}			
@@ -198,13 +238,24 @@ public class AntRun
 		default:
 			break;
 		}
-		
-		antDirection = nextDirection;
+		if( nextDirection != antDirection )
+		{
+			antDirection = nextDirection;
+			// recenter the cat in the middle of the path :
+			if( antDirection == AntDirection.NORTH || antDirection == AntDirection.SOUTH )
+			{
+				antX = tileX * tileSize + tileSize / 2;
+			}
+			else if( antDirection == AntDirection.WEST || antDirection == AntDirection.EAST )
+			{
+				antY = tileY * tileSize + tileSize / 2;
+			}
+		}
 	}
 	boolean isPathBlocked( AntDirection direction, int tileX, int tileY )
 	{
 		TileType currentTile = maze[tileX][tileY];
-		if( currentTile == TileType.START )
+		if( currentTile.ordinal() >= TileType.START.ordinal() )
 		{
 			return true;
 		}
@@ -251,13 +302,13 @@ public class AntRun
 		fastButtonPressed = false;
 		died = false;
 		gauge.reset();
-		
+		footprints.clear();
 		for( int i=0; i< SX; i++ )
 		{
 			for( int j=0; j< SY; j++ )
 			{
-				int pick = new Random().nextInt( TileType.values().length -3 );
-				maze[i][j] = TileType.values()[pick + 3 ]; // avoid picking the "start","banned" or "visited" tiles
+				int pick = new Random().nextInt( TileType.START.ordinal() );// avoid picking the "start","banned" or "banned" tiles
+				maze[i][j] = TileType.values()[pick ]; 
 				visited[i][j] = false;
 			}
 		}
@@ -338,71 +389,117 @@ public class AntRun
 			gauge.addStep(fastButtonPressed? 2 : 1);
 			System.out.println(gauge.nbSteps);
 			antReachedMiddle = false;
+
+			// mark the old tile as visited
+			visited[tileX][tileY] = true;
+			
+			if( hasCrossedLimit )
+			{
+				fastButtonPressed = false;
+				points += 3;
+			}
+			
+			// BONUS! reset all the visited tiles, and transform the "start" tile in a go through tile.
+			if( hasCrossedLimit && gauge.isFull() )
+			{
+				gauge.reset();					
+				footprints.clear();
+				
+				for( int i=0; i< SX; i++ )
+				{
+					for( int j=0; j< SY; j++ )
+					{
+						visited[i][j] = false;
+					}
+				}
+				if( startX > 0 )
+				{
+					maze[startX][startY] = TileType.STRAIGHT_HORI;
+					startX = -1;
+					startY = -1;
+				}
+				
+				// pick a tile at random and ban it
+				int pickX = newTileX;
+				int pickY = newTileY;
+				while( (pickX == newTileX && pickY == newTileY ) || maze[pickX][pickY].ordinal() > TileType.START.ordinal() )
+				{
+					pickX = new Random().nextInt(SX);
+					pickY = new Random().nextInt(SY);
+				}
+				maze[pickX][pickY] = TileType.values()[ maze[pickX][pickY].ordinal() + 8 ];
+				System.out.println( "banned " + pickX + "," + pickY );
+			}
+			
 			// check that we didn't run into a wall :
 			if( isPathBlocked( antDirection, newTileX, newTileY ) )
 			{
 				died = true;
 				return;
 			}
-			else
-			{
-				// mark the old tile as visited
-				visited[tileX][tileY] = true;
-				
-				if( hasCrossedLimit )
-				{
-					fastButtonPressed = false;
-					points += 3;
-				}
-				
-				// BONUS! reset all the visited tiles, and transform the "start" tile in a go through tile.
-				if( hasCrossedLimit && gauge.isFull() )
-				{
-					gauge.reset();
-					for( int i=0; i< SX; i++ )
-					{
-						for( int j=0; j< SY; j++ )
-						{
-							if(maze[i][j] != TileType.FOREVER_BANNED )
-							{
-								visited[i][j] = false;
-							}
-						}
-					}
-					if( startX > 0 )
-					{
-						maze[startX][startY] = TileType.STRAIGHT_HORI;
-						startX = -1;
-						startY = -1;
-					}
-					
-					// pick a tile at random and ban it
-					int pickX = newTileX;
-					int pickY = newTileY;
-					while( (pickX == newTileX && pickY == newTileY ) || maze[pickX][pickY] == TileType.FOREVER_BANNED )
-					{
-						pickX = new Random().nextInt(SX);
-						pickY = new Random().nextInt(SY);
-					}
-					maze[pickX][pickY] = TileType.FOREVER_BANNED;
-					visited[pickX][pickY] = true;
-				}
-			}
+
 		}
 		
 		antX = newAntX;
 		antY = newAntY;
+		
+		nextFootprintTime -= dt;
+		if( nextFootprintTime <= 0 )
+		{
+			leftPaw = !leftPaw;
+			nextFootprintTime = fastButtonPressed ? 0.2f : 0.4f;
+			
+			if( antDirection == AntDirection.NORTH || antDirection == AntDirection.SOUTH )
+			{
+				int x = (int) (leftPaw ? antX - antWidth * 0.25 : antX + antWidth * 0.25);
+				footprints.addElement( new PawData( x, (int) antY, antDirection, leftPaw));
+			}
+			else if( antDirection == AntDirection.EAST || antDirection == AntDirection.WEST )
+			{
+				int y = (int) (leftPaw ? antY -antHeight * 0.25 : antY + antHeight * 0.25);
+				footprints.addElement( new PawData( (int) antX, y, antDirection, leftPaw));
+			}
+
+		}
 		
 		// When we reach the middle of a tile, the ant must take a decision concerning the next turn :
 		if( !antReachedMiddle )
 		{
 			int posXonTile = (int) (antX % tileSize);
 			int posYonTile = (int) (antY % tileSize);
-			int offset = 5;
 			int middle = tileSize / 2;
-			if( posXonTile > middle-offset && posXonTile < middle+offset && posYonTile > middle-offset && posYonTile < middle+offset )
+			
+			if( antDirection == AntDirection.NORTH )
 			{
-				antReachedMiddle = true;
+				if( posYonTile+antHeight/2 >= middle )
+				{
+					antReachedMiddle = true;
+				}
+			}
+			else if( antDirection == AntDirection.SOUTH )
+			{
+				if( posYonTile+antHeight/2 <= middle )
+				{
+					antReachedMiddle = true;
+				}
+			}
+			else if( antDirection == AntDirection.WEST )
+			{
+				if( posXonTile+antWidth/2 <= middle )
+				{
+					antReachedMiddle = true;
+				}
+			}
+			else if( antDirection == AntDirection.EAST )
+			{
+				if( posXonTile+antWidth/2 >= middle )
+				{
+					antReachedMiddle = true;
+				}
+			}
+			
+			if( antReachedMiddle )
+			{
 				points += 2;
 				decideNewAntDirection();
 			}
@@ -476,49 +573,58 @@ public class AntRun
 		{
 			for( int j=0; j < SY; j++ )
 			{
-				if( visited[i][j] )
+				
+				
+				TileType type = maze[i][j];
+				if( type == TileType.START )
 				{
-					batch.draw(tex[TileType.VISITED.ordinal()], i * tileSize, j * tileSize, tileSize, tileSize );
+			//		public void draw (Texture texture, float x, float y, float originX, float originY, float width, float height, float scaleX,
+			//				float scaleY, float rotation, int srcX, int srcY, int srcWidth, int srcHeight, boolean flipX, boolean flipY) {
+
+					batch.draw (tex[type.ordinal()], (float)i * tileSize, (float)j * tileSize, tileSize/2,tileSize/2, (float)tileSize,(float)tileSize, 1.0f,
+							1.0f, -startAngle, 0,0,124,124, false, false);
+
 				}
 				else
 				{
-					TileType type = maze[i][j];
-					if( type == TileType.START )
-					{
-				//		public void draw (Texture texture, float x, float y, float originX, float originY, float width, float height, float scaleX,
-				//				float scaleY, float rotation, int srcX, int srcY, int srcWidth, int srcHeight, boolean flipX, boolean flipY) {
-	
-						batch.draw (tex[type.ordinal()], (float)i * tileSize, (float)j * tileSize, tileSize/2,tileSize/2, (float)tileSize,(float)tileSize, 1.0f,
-								1.0f, -startAngle, 0,0,124,124, false, false);
-	
-					}
-					else
-					{
-						batch.draw(tex[type.ordinal()], i * tileSize, j * tileSize, tileSize, tileSize );
-					}
+					batch.draw(tex[type.ordinal()], i * tileSize, j * tileSize, tileSize, tileSize );
 				}
+				
 			}
 		}
 	}
-	
+	public void drawPoints(SpriteBatch batch)
+	{
+        CharSequence str = String.valueOf(points) + " Pts";
+        font.draw(batch, str, 670, 350 );
+ 
+	}
 	public void draw(SpriteBatch batch)
 	{		
 		drawMaze(batch);
 		
+		
+		for( int i=0; i< footprints.size(); i++ )
+		{
+			int s =10;
+			batch.draw (pawTex, footprints.get(i).x, footprints.get(i).y, s/2, s/2, s, s, 1.0f,
+					1.0f, footprints.get(i).angle, 0, 0, pawTex.getWidth(), pawTex.getHeight(), false, false);
+
+		}
+
 		//batch.draw( antTexture[antTextureIndex], antX, antY, antWidth, antHeight);
 		final float[] antrot = { 180, 90, 0, 270 };
 		float antRotation = antrot[ antDirection.ordinal() ];
-		batch.draw (antTexture[antTextureIndex], antX, antY, 0,0, antWidth, antHeight, 1.0f,
-				1.0f, antRotation, 0, 0, 64, 75, false, false);
+		batch.draw (antTexture[antTextureIndex], antX - antWidth/2, antY - antHeight/2,antWidth/2, antHeight/2, antWidth, antHeight, 1.0f,
+				1.0f, antRotation, 0, 0, antTexture[antTextureIndex].getWidth(), antTexture[antTextureIndex].getHeight(), false, false);
+
 		
 		gauge.draw(batch);
 		
 		batch.draw( fastButtonPressed ? TxtFastButtonPressed : TxtFastButtonReleased, fastButtonZone.x, fastButtonZone.y, fastButtonZone.width, fastButtonZone.height );
 
 		
-        CharSequence str = String.valueOf(points);
-        font.draw(batch, str, 650, 200);
-        
+		drawPoints(batch);
 
 	}
 }

@@ -22,4 +22,7 @@ public abstract class GameState
 	{
 		
 	}
+	
+	public abstract void touchEvent( float x, float y, boolean pressed );
+
 }

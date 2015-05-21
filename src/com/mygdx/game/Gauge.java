@@ -13,8 +13,13 @@ public class Gauge
 	int gaugeW;
 	int gaugeH;
 	
+	int gradX;
+	int gradY;
+	int gradW;
+	int gradH;
+	
 	int nbSteps;
-	int maxSteps = 5;
+	int maxSteps = 20;
 	Gauge()
 	{
 		gauge_empty = new Texture("gauge_empty.png");
@@ -22,9 +27,14 @@ public class Gauge
 		
 		gaugeX = 650; //(>78*8)
 		gaugeY = 20;
-		gaugeW = 48;
-		gaugeH = 125;
+		gaugeW = 105;
+		gaugeH = 250;
 		
+		gradX = 660;
+		gradY = 25;
+		gradW = 47;
+		gradH = 200;
+	
 		nbSteps = 0;
 	}
 	
@@ -49,8 +59,8 @@ public class Gauge
 	void draw( SpriteBatch batch )
 	{
 		batch.draw( gauge_empty, gaugeX, gaugeY, gaugeW, gaugeH );
-		batch.draw (gauge_grad,  gaugeX, gaugeY, 0, 0, 27, 121*nbSteps/maxSteps, 1,
-		1, 0.0f, 0, 0, 27, 121*nbSteps/maxSteps, false,false);
+		batch.draw (gauge_grad,  gradX, gradY, 0, 0, gradW, gradH*nbSteps/maxSteps, 1,
+		1, 0.0f, 0, 0, gradW, gradH*nbSteps/maxSteps, false,true);
 
 	}
 }

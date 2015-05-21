@@ -37,19 +37,17 @@ public class MyInputProcessor implements InputProcessor
 		Vector3 touchPos = new Vector3();
 		touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
 		touchPos = game.camera.unproject(touchPos);
-		game.game.touchEvent(touchPos.x, touchPos.y, true);
-
+		game.gameStateManager.getCurrentState().touchEvent(touchPos.x, touchPos.y, true);
 		return false;
 	}
-
+	
 	@Override
 	public boolean touchUp(int screenX, int screenY, int pointer, int button) 
 	{
 		Vector3 touchPos = new Vector3();
 		touchPos.set(Gdx.input.getX(), Gdx.input.getY(), 0);
 		touchPos = game.camera.unproject(touchPos);
-		game.game.touchEvent(touchPos.x, touchPos.y, false);
-
+		game.gameStateManager.getCurrentState().touchEvent(touchPos.x, touchPos.y, false);
 		return false;
 	}
 

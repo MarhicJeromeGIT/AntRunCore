@@ -13,12 +13,8 @@ public class MyGdxGame extends ApplicationAdapter {
 	
 	OrthographicCamera camera;
 	public AntRun game;
-	
-	Rectangle rect;
-	Texture img;
-	
+		
 	MyInputProcessor inputProcessor;
-	
 	GameStateManager gameStateManager;
 	
 	@Override
@@ -30,12 +26,6 @@ public class MyGdxGame extends ApplicationAdapter {
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
-		img = new Texture("badlogic.jpg");
-		rect = new Rectangle();
-		rect.x = 100;
-		rect.y = 100;
-		rect.width = 64;
-		rect.height = 64;
 		
 		camera = new OrthographicCamera();
 		camera.setToOrtho(false,800,480);
@@ -65,7 +55,7 @@ public class MyGdxGame extends ApplicationAdapter {
 		float dt = Gdx.graphics.getDeltaTime();
 		update(dt);
 		
-		Gdx.gl.glClearColor(0,0,0.2f,1);
+		Gdx.gl.glClearColor( 0.0f,0.0f,0.0f,1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		camera.update();
 		batch.setProjectionMatrix(camera.combined);
